@@ -234,8 +234,17 @@ RXLatency::handle_pkt(const rte_mbuf_t *m) {
                         }
                         m_rx_pg_stat_payload[hw_id].add_pkts(1);
                         m_rx_pg_stat_payload[hw_id].add_bytes(m->pkt_len + 4); // +4 for ethernet CRC
-                        uint64_t d = (os_get_hr_tick_64() - fsp_head->time_stamp );
-                        dsec_t ctime = ptime_convert_hr_dsec(d);
+                        // TIME EXPERIMENT
+                        // uint64_t d = (os_get_hr_tick_64() - fsp_head->time_stamp );
+                        // dsec_t ctime = ptime_convert_hr_dsec(d);
+
+                        uint64_t receiver_time_nanoseconds = get_time_epoch_nanoseconds();
+                        // received_pkt_with_future_timestamp == true means that time synchronization error is bigger than latency.
+                        bool received_pkt_with_future_timestamp = receiver_time_nanoseconds < fsp_head->time_stamp;
+                        uint64_t abs_diff = received_pkt_with_future_timestamp ?
+                            fsp_head->time_stamp - receiver_time_nanoseconds
+                            : receiver_time_nanoseconds - fsp_head->time_stamp;
+                        dsec_t ctime = (received_pkt_with_future_timestamp ? -1.d : 1.d) * abs_diff / (1000.d * 1000.d * 1000.d);
                         curr_rfc2544->add_sample(ctime);
                     }
                 } else {
